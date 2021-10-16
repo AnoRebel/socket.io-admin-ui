@@ -1,130 +1,126 @@
 <template>
-  <div>
-    <v-breadcrumbs :items="breadcrumbItems" />
-
-    <v-card>
-      <v-card-text class="d-flex">
-        <NamespaceSelector />
-
-        <v-switch
-          v-model="showPrivateRooms"
-          @change="onPrivateRoomsUpdate"
-          :label="$t('rooms.show-private')"
-          class="ml-3"
-          inset
-          dense
-        />
-      </v-card-text>
-
-      <v-data-table
+  <div class="mx-auto max-w-7xl px-4 sm:px-6 md:px-8">
+    <breadcrumbs :items="breadcrumbItems" />
+  </div>
+  <div class="p-4 bg-white shadow-lg rounded-lg my-20 mx-6">
+    <div class="p-4">
+      <NamespaceSelector />
+      <SwitchGroup as="div" class="flex items-center">
+        <Switch v-model="showPrivateRooms" :class="[showPrivateRooms ? 'bg-indigo-600' : 'bg-gray-200', 'relative inline-flex flex-shrink-0 h-6 w-11 border-2 border-transparent rounded-full cursor-pointer transition-colors ease-in-out duration-200 focus:outline-none']">
+          <span aria-hidden="true" :class="[showPrivateRooms ? 'translate-x-5' : 'translate-x-0', 'pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transform ring-0 transition ease-in-out duration-200']" />
+        </Switch>
+        <SwitchLabel as="span" class="ml-3">
+          <span class="text-sm font-medium text-gray-900">{{ t('rooms.show-private') }}</span>
+        </SwitchLabel>
+      </SwitchGroup>
+    </div>
+    <Datatable
         :headers="headers"
         :items="filteredRooms"
-        :footer-props="footerProps"
       >
-        <template v-slot:item.sockets="{ item }">
+        <template #sockets="{ item }">
           {{ item.sockets.length }}
         </template>
 
-        <template v-slot:item.isPrivate="{ value }">
-          <RoomType :is-private="value" />
+        <template #isPrivate="{ item }">
+          <RoomType :is-private="item.isPrivate" />
         </template>
 
-        <template v-slot:item.actions="{ item }">
-          <v-tooltip bottom v-if="isMultiLeaveSupported && !item.isPrivate">
-            <template v-slot:activator="{ on, attrs }">
-              <v-btn
-                v-bind="attrs"
-                v-on="on"
+        <template #actions="{ item }">
+          <tooltip v-if="isMultiLeaveSupported && !item.isPrivate">
+            <template #activator>
+              <button
+                class="btn ml-3"
+                :disabled="isReadonly"
                 @click="clear(item)"
-                :disabled="isReadonly"
-                small
-                class="ml-3"
               >
-                <v-icon>mdi-tag-off-outline</v-icon>
-              </v-btn>
+                <MinusCircleIcon />
+              </button>
             </template>
-            <span>{{ $t("rooms.clear") }}</span>
-          </v-tooltip>
+            <span>{{ t("rooms.clear") }}</span>
+          </tooltip>
 
-          <v-tooltip bottom v-if="isMultiDisconnectSupported">
-            <template v-slot:activator="{ on, attrs }">
-              <v-btn
-                v-bind="attrs"
-                v-on="on"
+          <tooltip v-if="isMultiDisconnectSupported">
+            <template #activator>
+              <button
+                class="btn ml-3"
+                :disabled="isReadonly"
                 @click="disconnect(item)"
-                :disabled="isReadonly"
-                small
-                class="ml-3"
               >
-                <v-icon>mdi-logout</v-icon>
-              </v-btn>
+                <LogoutIcon />
+              </button>
             </template>
-            <span>{{ $t("rooms.disconnect") }}</span>
-          </v-tooltip>
+            <span>{{ t("rooms.disconnect") }}</span>
+          </tooltip>
 
-          <v-tooltip bottom>
-            <template v-slot:activator="{ on, attrs }">
-              <v-btn
-                v-bind="attrs"
-                v-on="on"
+          <tooltip>
+            <template #activator>
+              <button
+                class="btn ml-3"
                 @click="displayDetails(item)"
-                small
-                class="ml-3"
               >
-                <v-icon>mdi-dots-horizontal</v-icon>
-              </v-btn>
+                <DotsHorizontalIcon />
+              </button>
             </template>
-            <span>{{ $t("rooms.displayDetails") }}</span>
-          </v-tooltip>
+            <span>{{ t("rooms.displayDetails") }}</span>
+          </tooltip>
         </template>
-      </v-data-table>
-    </v-card>
+      </Datatable>
   </div>
 </template>
 
 <script>
-import { mapGetters, mapState } from "vuex";
-import NamespaceSelector from "../components/NamespaceSelector";
-import SocketHolder from "../SocketHolder";
-import RoomType from "../components/Room/RoomType";
+import { ref, computed, onMounted, watch } from "vue";
+import { useStore } from "vuex";
+import { useI18n } from "vue-i18n";
 import { sortBy } from "lodash-es";
+import { useRoute, useRouter } from "vue-router";
+import { DotsHorizontalIcon } from "@heroicons/vue/solid";
+import { Switch, SwitchGroup, SwitchLabel } from '@headlessui/vue'
+import { MinusCircleIcon, LogoutIcon } from "@heroicons/vue/outline";
+
+import SocketHolder from "@/SocketHolder";
+import Tooltip from "@/components/Tooltip.vue";
+import Datatable from "@/components/Datatable.vue";
+import RoomType from "@/components/Room/RoomType.vue";
+import Breadcrumbs from "@/components/Breadcrumbs.vue";
+import NamespaceSelector from "@/components/NamespaceSelector.vue";
 
 export default {
   name: "Rooms",
+  components: { RoomType, NamespaceSelector, Datatable, Tooltip, Breadcrumbs, DotsHorizontalIcon, MinusCircleIcon, LogoutIcon, Switch, SwitchGroup, SwitchLabel, },
+  setup() {
+    const { t } = useI18n();
+    const store = useStore();
+    const route = useRoute();
+    const router = useRouter();
+    const showPrivateRooms = ref(false);
 
-  components: { RoomType, NamespaceSelector },
+    onMounted(() => {
+      showPrivateRooms.value = route.query.p === "1";
+    });
 
-  data() {
-    return {
-      showPrivateRooms: false,
-      footerProps: {
+    const footerProps = ref({
         "items-per-page-options": [20, 100, -1],
-      },
-    };
-  },
-
-  computed: {
-    breadcrumbItems() {
-      return [
+      });
+    const breadcrumbItems = computed(() => [
         {
-          text: this.$t("rooms.title"),
+          text: t("rooms.title"),
           disabled: true,
         },
-      ];
-    },
-    headers() {
-      return [
+      ]);
+    const headers = computed(() => [
         {
-          text: this.$t("id"),
+          text: t("id"),
           value: "name",
           align: "start",
         },
         {
-          text: this.$t("type"),
+          text: t("type"),
           value: "isPrivate",
         },
         {
-          text: this.$t("rooms.sockets-count"),
+          text: t("rooms.sockets-count"),
           value: "sockets",
         },
         {
@@ -132,54 +128,62 @@ export default {
           align: "end",
           sortable: false,
         },
-      ];
-    },
-    ...mapGetters("main", ["rooms"]),
-    ...mapState({
-      selectedNamespace: (state) => state.main.selectedNamespace,
-      isReadonly: (state) => state.config.readonly,
-      isMultiLeaveSupported: (state) =>
-        state.config.supportedFeatures.includes("MLEAVE"),
-      isMultiDisconnectSupported: (state) =>
-        state.config.supportedFeatures.includes("MDISCONNECT"),
-    }),
-    filteredRooms() {
-      const filteredRooms = this.showPrivateRooms
-        ? this.rooms
-        : this.rooms.filter((room) => !room.isPrivate);
+      ]);
+    const rooms = computed(() => store.getters["main/rooms"]);
+    const selectedNamespace = computed(() => store.state.main.selectedNamespace);
+    const isReadonly = computed(() => store.state.config.readonly);
+    const isMultiLeaveSupported = computed(() => store.state.config.supportedFeatures.includes("MLEAVE"));
+    const isMultiDisconnectSupported = computed(() => store.state.config.supportedFeatures.includes("MDISCONNECT"));
+    const filteredRooms = computed(() => {
+      const filteredRooms = showPrivateRooms.value
+        ? rooms.value
+        : rooms.value.filter((room) => !room.isPrivate);
       return sortBy(filteredRooms, "name");
-    },
-  },
+    });
 
-  methods: {
-    clear(room) {
-      SocketHolder.socket.emit("leave", this.selectedNamespace.name, room.name);
-    },
-    disconnect(room) {
-      SocketHolder.socket.emit(
+    const clear = (room) => {
+      SocketHolder.socket.emit("leave", selectedNamespace.value.name, room.name);
+    };
+    const disconnect = (room) => SocketHolder.socket.emit(
         "_disconnect",
-        this.selectedNamespace.name,
+        selectedNamespace.value.name,
         false,
         room.name
       );
-    },
-    displayDetails(room) {
-      this.$router.push({
+    const displayDetails = (room) => router.push({
         name: "room",
-        params: { nsp: this.selectedNamespace.name, name: room.name },
+        params: { nsp: selectedNamespace.value.name, name: room.name },
       });
-    },
-    onPrivateRoomsUpdate(value) {
-      const query = value ? { p: 1 } : {};
-      this.$router.replace({
+    // const onPrivateRoomsUpdate = (value) => {
+    //   const query = value ? { p: 1 } : {};
+    //   router.replace({
+    //     name: "rooms",
+    //     query,
+    //   });
+    // };
+    watch(showPrivateRooms, val => {
+      const query = val ? { p: 1 } : {};
+      router.replace({
         name: "rooms",
         query,
       });
-    },
-  },
+    });
 
-  mounted() {
-    this.showPrivateRooms = this.$route.query.p === "1";
+    return {
+      t,
+      showPrivateRooms,
+      footerProps,
+      breadcrumbItems,
+      headers,
+      isReadonly,
+      isMultiLeaveSupported,
+      isMultiDisconnectSupported,
+      filteredRooms,
+      clear,
+      disconnect,
+      displayDetails,
+      // onPrivateRoomsUpdate,
+    };
   },
 };
 </script>

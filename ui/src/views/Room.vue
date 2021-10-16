@@ -1,58 +1,64 @@
 <template>
-  <div>
-    <v-breadcrumbs :items="breadcrumbItems" />
-
-    <v-container v-if="room" fluid>
-      <v-row>
-        <v-col sm="12" md="4">
-          <RoomDetails :room="room" :nsp="$route.params.nsp" />
-        </v-col>
-
-        <v-col sm="12" md="8">
-          <RoomSockets :room="room" />
-        </v-col>
-      </v-row>
-    </v-container>
+  <div class="mx-auto max-w-7xl px-4 sm:px-6 md:px-8">
+    <breadcrumbs :items="breadcrumbItems" />
+  </div>
+  <div class="mx-auto max-w-7xl px-4 sm:px-6 md:px-8">
+    <!-- Replace with your content -->
+    <div v-if="socket" class="flex flex-row">
+      <div class="w-full md:w-1/4">
+        <RoomDetails :room="room" :nsp="$route.params.nsp" />
+      </div>
+      <div class="w-full md:w-1/8">
+        <RoomSockets :room="room" />
+      </div>
+    </div>
+    <!-- /End replace -->
   </div>
 </template>
 
 <script>
-import { mapGetters } from "vuex";
-import RoomSockets from "../components/Room/RoomSockets";
-import RoomDetails from "../components/Room/RoomDetails";
+import { ref, computed, onMounted } from "vue";
+import { useStore } from "vuex";
+import { useI18n } from "vue-i18n";
+import { useRoute } from "vue-router";
+
+import Breadcrumbs from "@/components/Breadcrumbs.vue";
+import RoomSockets from "@/components/Room/RoomSockets.vue";
+import RoomDetails from "@/components/Room/RoomDetails.vue";
 
 export default {
   name: "Sockets",
+  components: { RoomDetails, RoomSockets, Breadcrumbs, },
+  setup() {
+    const { t } = useI18n();
+    const store = useStore();
+    const route = useRoute();
+    const room = ref(null);
 
-  components: { RoomDetails, RoomSockets },
+    onMounted(() => {
+      const findRoomByName = computed(() => store.getters["main/findRoomByName"](
+        route.params.nsp,
+        route.params.name
+      ));
+      room.value = findRoomByName.value;
+    });
 
-  data() {
-    return {
-      room: null,
-    };
-  },
-
-  computed: {
-    breadcrumbItems() {
-      return [
+    const breadcrumbItems = computed(() => [
         {
-          text: this.$t("rooms.title"),
+          text: t("rooms.title"),
           to: { name: "rooms" },
         },
         {
-          text: this.$t("rooms.details"),
+          text: t("rooms.details"),
           disabled: true,
         },
-      ];
-    },
-    ...mapGetters("main", ["findRoomByName"]),
-  },
+      ]);
 
-  mounted() {
-    this.room = this.findRoomByName(
-      this.$route.params.nsp,
-      this.$route.params.name
-    );
+    return {
+      t,
+      room,
+      breadcrumbItems,
+    };
   },
 };
 </script>

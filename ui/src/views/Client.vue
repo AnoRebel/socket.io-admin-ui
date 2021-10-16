@@ -1,65 +1,71 @@
 <template>
-  <div>
-    <v-breadcrumbs :items="breadcrumbItems" />
-
-    <v-container v-if="client" fluid>
-      <v-row>
-        <v-col sm="12" md="6" lg="4">
-          <ClientDetails :client="client" :socket="socket" />
-        </v-col>
-
-        <v-col sm="12" md="6" lg="4">
-          <InitialRequest :socket="socket" v-if="socket" />
-        </v-col>
-
-        <v-col sm="12" md="6" lg="4">
-          <ClientSockets :sockets="client.sockets" />
-        </v-col>
-      </v-row>
-    </v-container>
+  <div class="mx-auto max-w-7xl px-4 sm:px-6 md:px-8">
+    <breadcrumbs :items="breadcrumbItems" />
+  </div>
+  <div class="mx-auto max-w-7xl px-4 sm:px-6 md:px-8">
+    <!-- Replace with your content -->
+    <div v-if="client" class="flex flex-row">
+      <div class="w-full md:w-1/6 lg:w-1/4">
+        <ClientDetails :client="client" :socket="socket" />
+      </div>
+      <div class="w-full md:w-1/6 lg:w-1/4">
+        <InitialRequest :socket="socket" v-if="socket" />
+      </div>
+      <div class="w-full md:w-1/6 lg:w-1/4">
+        <ClientSockets :sockets="client.sockets" />
+      </div>
+    </div>
+    <!-- /End replace -->
   </div>
 </template>
 
 <script>
-import { mapGetters } from "vuex";
-import ClientDetails from "../components/Client/ClientDetails";
-import InitialRequest from "../components/Socket/InitialRequest";
-import ClientSockets from "../components/Client/ClientSockets";
+import { ref, computed, onMounted } from "vue";
+import { useRoute } from "vue-router";
+import { useI18n } from "vue-i18n";
+import { useStore } from "vuex";
+
+import Breadcrumbs from "@/components/Breadcrumbs.vue";
+import ClientDetails from "@/components/Client/ClientDetails.vue";
+import ClientSockets from "@/components/Client/ClientSockets.vue";
+import InitialRequest from "@/components/Socket/InitialRequest.vue";
 
 export default {
   name: "Client",
+  components: { ClientSockets, InitialRequest, ClientDetails, Breadcrumbs, },
+  setup() {
+    const { t } = useI18n();
+    const store = useStore();
+    const route = useRoute();
 
-  components: { ClientSockets, InitialRequest, ClientDetails },
+    const socket = ref(null);
+    const client = ref(null);
 
-  data() {
-    return {
-      socket: null,
-      client: null,
-    };
-  },
+    onMounted(() => {
+      const findClientById = computed(() => store.getters["main/findClientById"](route.params.id));
+      client.value = findClientById.value;
+      if (client.value) {
+        socket.value = client.value.sockets[0];
+      }
+    });
 
-  computed: {
-    breadcrumbItems() {
-      return [
+    const breadcrumbItems = computed(() => [
         {
-          text: this.$t("clients.title"),
+          text: t("clients.title"),
           to: { name: "clients" },
-          exact: true,
+          // exact: true, // Unnecessary in Vue 3
         },
         {
-          text: this.$t("clients.details"),
+          text: t("clients.details"),
           disabled: true,
         },
-      ];
-    },
-    ...mapGetters("main", ["findClientById"]),
-  },
+      ]);
 
-  mounted() {
-    this.client = this.findClientById(this.$route.params.id);
-    if (this.client) {
-      this.socket = this.client.sockets[0];
-    }
+    return {
+      socket,
+      client,
+      breadcrumbItems,
+    };
   },
 };
 </script>

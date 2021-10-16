@@ -1,25 +1,20 @@
-import Vue from "vue";
+import { createApp } from "vue";
+import { createI18n } from "vue-i18n";
+import messages from "@intlify/vite-plugin-vue-i18n/messages";
 import App from "./App.vue";
-import router from "./router";
-import i18n from "./i18n";
 import store from "./store";
-import vuetify from "./plugins/vuetify";
+import router from "./router";
+import "virtual:windi.css";
 
-Vue.config.productionTip = false;
+const i18n = createI18n({
+  legacy: false,
+  locale: "en",
+  fallbackLocale: "en",
+  messages,
+});
 
-store.commit("config/init");
-store.commit("connection/init");
-
-i18n.locale = store.state.config.lang;
-
-setInterval(() => {
-  store.commit("servers/updateState");
-}, 1000);
-
-new Vue({
-  router,
-  i18n,
-  store,
-  vuetify,
-  render: (h) => h(App),
-}).$mount("#app");
+const app = createApp(App);
+app.use(router);
+app.use(store);
+app.use(i18n);
+router.isReady().then(() => app.mount("#app"));

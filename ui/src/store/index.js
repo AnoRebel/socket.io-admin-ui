@@ -1,17 +1,19 @@
-import Vue from "vue";
-import Vuex from "vuex";
-import config from "./modules/config";
-import connection from "./modules/connection";
-import main from "./modules/main";
-import servers from "./modules/servers";
+import { createStore, createLogger } from "vuex";
 
-Vue.use(Vuex);
+import main from "@/store/modules/main";
+import config from "@/store/modules/config";
+import servers from "@/store/modules/servers";
+import connection from "@/store/modules/connection";
 
-export default new Vuex.Store({
+const debug = process.env.NODE_ENV ? process.env.NODE_ENV !== "production" : import.meta.env.MODE !== "production";
+
+export default createStore({
   modules: {
     config,
     connection,
     main,
     servers,
   },
+  strict: debug,
+  plugins: debug ? [createLogger()] : [],
 });

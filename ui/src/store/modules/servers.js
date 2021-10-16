@@ -1,5 +1,5 @@
 import { find, merge } from "lodash-es";
-import { remove } from "../../util";
+import { remove } from "@/util";
 
 const HEALTHY_THRESHOLD = 10000;
 
@@ -23,7 +23,7 @@ export default {
       remove(state.servers, { serverId });
     },
     updateState(state) {
-      state.servers.forEach((server) => {
+      state.servers.forEach(server => {
         server.healthy = Date.now() - server.lastPing < HEALTHY_THRESHOLD;
       });
     },

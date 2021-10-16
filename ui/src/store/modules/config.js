@@ -1,9 +1,13 @@
-import { isLocalStorageAvailable } from "../../util";
+import { isLocalStorageAvailable } from "@/util";
+import { useDark, useToggle } from "@vueuse/core";
+
+const isDark = useDark();
+const toggleTheme = useToggle(isDark);
 
 export default {
   namespaced: true,
   state: {
-    darkTheme: false,
+    darkTheme: isDark.value,
     readonly: false,
     lang: "en",
     supportedFeatures: [],
@@ -18,6 +22,7 @@ export default {
     },
     selectTheme(state, darkTheme) {
       state.darkTheme = darkTheme;
+      toggleTheme(darkTheme);
       if (isLocalStorageAvailable) {
         localStorage.setItem("dark_theme", darkTheme);
       }

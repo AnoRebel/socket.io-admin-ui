@@ -10,7 +10,6 @@
         <v-list-item-icon>
           <v-icon>{{ item.icon }}</v-icon>
         </v-list-item-icon>
-
         <v-list-item-content>
           <v-list-item-title>{{ item.title }}</v-list-item-title>
         </v-list-item-content>
@@ -19,7 +18,6 @@
 
     <template v-slot:append>
       <v-divider />
-
       <div class="pa-3 pt-10">
         <LangSelector />
         <ThemeSelector />
@@ -30,45 +28,48 @@
 </template>
 
 <script>
-import LangSelector from "./LangSelector";
-import ThemeSelector from "./ThemeSelector";
-import ReadonlyToggle from "./ReadonlyToggle";
+import { computed } from "vue";
+import { useI18n } from "vue-i18n";
+
+import LangSelector from "@/components/LangSelector.vue";
+import ThemeSelector from "@/components/ThemeSelector.vue";
+import ReadonlyToggle from "@/components/ReadonlyToggle.vue";
+
 export default {
   name: "NavigationDrawer",
-
-  components: { ReadonlyToggle, ThemeSelector, LangSelector },
-
-  computed: {
-    items() {
-      return [
+  components: { ReadonlyToggle, ThemeSelector, LangSelector, },
+  setup() {
+    const { t } = useI18n();
+    const items = computed(() => [
         {
-          title: this.$t("dashboard.title"),
+          title: t("dashboard.title"),
           icon: "mdi-home-outline",
           to: { name: "dashboard" },
           exact: true,
         },
         {
-          title: this.$t("sockets.title"),
+          title: t("sockets.title"),
           icon: "mdi-ray-start-arrow",
           to: { name: "sockets" },
         },
         {
-          title: this.$t("rooms.title"),
+          title: t("rooms.title"),
           icon: "mdi-tag-outline",
           to: { name: "rooms" },
         },
         {
-          title: this.$t("clients.title"),
+          title: t("clients.title"),
           icon: "mdi-account-circle-outline",
           to: { name: "clients" },
         },
         {
-          title: this.$t("servers.title"),
+          title: t("servers.title"),
           icon: "mdi-server",
           to: { name: "servers" },
         },
-      ];
-    },
+      ]);
+
+    return { items };
   },
 };
 </script>

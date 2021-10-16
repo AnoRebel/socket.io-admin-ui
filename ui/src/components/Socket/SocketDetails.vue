@@ -1,186 +1,164 @@
 <template>
-  <v-card class="fill-height">
-    <v-card-title>{{ $t("details") }}</v-card-title>
+  <div class="p-4 bg-white shadow-lg rounded-lg my-20 mx-6">
+    <div class="font-bold text-left p-4">{{ t("details") }}</div>
+    <div class="p-4">
+      <h4>{{ t("sockets.client") }}</h4>
+    </div>
+    <table class="min-w-full">
+      <tbody class="divide-y divide-gray-200">
+        <tr class="bg-gray-50 hover:bg-gray-200">
+          <td class="key-column px-4 whitespace-nowrap text-sm text-gray-500 py-2">{{ t("id") }}</td>
+          <td class="px-4 whitespace-nowrap text-sm text-gray-500 py-2">
+            {{ client.id }}
+          </td>
+          <td align="right" class="px-4 whitespace-nowrap text-sm text-gray-500 py-2">
+            <tooltip v-if="client.connected">
+              <template #activator>
+                <button
+                  class=" btn ml-3"
+                  @click="navigateToClient()"
+                >
+                  <DotsHorizontalIcon />
+                </button>
+              </template>
+              <span>{{ t("clients.displayDetails") }}</span>
+            </tooltip>
+          </td>
+        </tr>
+        <tr class="bg-gray-50 hover:bg-gray-200">
+          <td class="key-column px-4 whitespace-nowrap text-sm text-gray-500 py-2">{{ t("status") }}</td>
+          <td class="px-4 whitespace-nowrap text-sm text-gray-500 py-2">
+            <ConnectionStatus :connected="client.connected" />
+          </td>
+          <td align="right" class="px-4 whitespace-nowrap text-sm text-gray-500 py-2">
+            <tooltip
+              v-if="isSocketDisconnectSupported && client.connected"
+            >
+              <template #activator>
+                <button
+                  :disabled="isReadonly"
+                  @click="disconnectClient()"
+                >
+                  <LogoutIcon />
+                </button>
+              </template>
+              <span>{{ t("clients.disconnect") }}</span>
+            </tooltip>
+          </td>
+        </tr>
+        <tr class="bg-gray-50 hover:bg-gray-200">
+          <td class="key-column px-4 whitespace-nowrap text-sm text-gray-500 py-2">{{ t("sockets.transport") }}</td>
+          <td class="px-4 whitespace-nowrap text-sm text-gray-500 py-2"><Transport :transport="socket.transport" /></td>
+          <td class="px-4 whitespace-nowrap text-sm text-gray-500 py-2"></td>
+        </tr>
+        <tr class="bg-gray-50 hover:bg-gray-200">
+          <td class="key-column px-4 whitespace-nowrap text-sm text-gray-500 py-2">{{ t("sockets.address") }}</td>
+          <td class="px-4 whitespace-nowrap text-sm text-gray-500 py-2">{{ socket.handshake.address }}</td>
+          <td class="px-4 whitespace-nowrap text-sm text-gray-500 py-2"></td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="p-4">
+      <h4>{{ t("sockets.socket") }}</h4>
+    </div>
+    <table class="min-w-full">
+      <tbody class="divide-y divide-gray-200">
+        <tr class="bg-gray-50 hover:bg-gray-200">
+          <td class="key-column px-4 whitespace-nowrap text-sm text-gray-500 py-2">{{ t("namespace") }}</td>
+          <td class="px-4 whitespace-nowrap text-sm text-gray-500 py-2">
+            <code>{{ socket.nsp }}</code>
+          </td>
+          <td class="px-4 whitespace-nowrap text-sm text-gray-500 py-2"></td>
+        </tr>
 
-    <v-card-text
-      ><h4>{{ $t("sockets.client") }}</h4></v-card-text
-    >
+        <tr class="bg-gray-50 hover:bg-gray-200">
+          <td class="key-column px-4 whitespace-nowrap text-sm text-gray-500 py-2">{{ t("id") }}</td>
+          <td class="px-4 whitespace-nowrap text-sm text-gray-500 py-2">{{ socket.id }}</td>
+          <td class="px-4 whitespace-nowrap text-sm text-gray-500 py-2"></td>
+        </tr>
 
-    <v-simple-table dense>
-      <template>
-        <tbody>
-          <tr>
-            <td class="key-column">{{ $t("id") }}</td>
-            <td>
-              {{ client.id }}
-            </td>
-            <td align="right">
-              <v-tooltip bottom v-if="client.connected">
-                <template v-slot:activator="{ on, attrs }">
-                  <v-btn
-                    v-bind="attrs"
-                    v-on="on"
-                    @click="navigateToClient()"
-                    small
-                    class="ml-3"
-                  >
-                    <v-icon>mdi-dots-horizontal</v-icon>
-                  </v-btn>
-                </template>
-                <span>{{ $t("clients.displayDetails") }}</span>
-              </v-tooltip>
-            </td>
-          </tr>
-          <tr>
-            <td class="key-column">{{ $t("status") }}</td>
-            <td>
-              <ConnectionStatus :connected="client.connected" />
-            </td>
-            <td align="right">
-              <v-tooltip
-                bottom
-                v-if="isSocketDisconnectSupported && client.connected"
-              >
-                <template v-slot:activator="{ on, attrs }">
-                  <v-btn
-                    v-bind="attrs"
-                    v-on="on"
-                    @click="disconnectClient()"
-                    :disabled="isReadonly"
-                    small
-                  >
-                    <v-icon>mdi-logout</v-icon>
-                  </v-btn>
-                </template>
-                <span>{{ $t("clients.disconnect") }}</span>
-              </v-tooltip>
-            </td>
-          </tr>
-          <tr>
-            <td class="key-column">{{ $t("sockets.transport") }}</td>
-            <td><Transport :transport="socket.transport" /></td>
-            <td></td>
-          </tr>
-          <tr>
-            <td class="key-column">{{ $t("sockets.address") }}</td>
-            <td>{{ socket.handshake.address }}</td>
-            <td></td>
-          </tr>
-        </tbody>
-      </template>
-    </v-simple-table>
+        <tr class="bg-gray-50 hover:bg-gray-200">
+          <td class="key-column px-4 whitespace-nowrap text-sm text-gray-500 py-2">{{ t("status") }}</td>
+          <td class="px-4 whitespace-nowrap text-sm text-gray-500 py-2">
+            <ConnectionStatus :connected="socket.connected" />
+          </td>
+          <td align="right" class="px-4 whitespace-nowrap text-sm text-gray-500 py-2">
+            <tooltip
+              v-if="isSocketDisconnectSupported && socket.connected"
+            >
+              <template #activator>
+                <button
+                  class="btn ml-3"
+                  :disabled="isReadonly"
+                  @click="disconnectSocket()"
+                >
+                  <LogoutIcon />
+                </button>
+              </template>
+              <span>{{ t("sockets.disconnect") }}</span>
+            </tooltip>
+          </td>
+        </tr>
 
-    <v-card-text
-      ><h4>{{ $t("sockets.socket") }}</h4></v-card-text
-    >
-
-    <v-simple-table dense>
-      <template v-slot:default>
-        <tbody>
-          <tr>
-            <td class="key-column">{{ $t("namespace") }}</td>
-            <td>
-              <code>{{ socket.nsp }}</code>
-            </td>
-            <td></td>
-          </tr>
-
-          <tr>
-            <td class="key-column">{{ $t("id") }}</td>
-            <td>{{ socket.id }}</td>
-            <td></td>
-          </tr>
-
-          <tr>
-            <td class="key-column">{{ $t("status") }}</td>
-            <td>
-              <ConnectionStatus :connected="socket.connected" />
-            </td>
-            <td align="right">
-              <v-tooltip
-                bottom
-                v-if="isSocketDisconnectSupported && socket.connected"
-              >
-                <template v-slot:activator="{ on, attrs }">
-                  <v-btn
-                    v-bind="attrs"
-                    v-on="on"
-                    @click="disconnectSocket()"
-                    :disabled="isReadonly"
-                    small
-                    class="ml-3"
-                  >
-                    <v-icon>mdi-logout</v-icon>
-                  </v-btn>
-                </template>
-                <span>{{ $t("sockets.disconnect") }}</span>
-              </v-tooltip>
-            </td>
-          </tr>
-
-          <tr>
-            <td class="key-column">{{ $t("sockets.creation-date") }}</td>
-            <td>{{ creationDate }}</td>
-            <td></td>
-          </tr>
-        </tbody>
-      </template>
-    </v-simple-table>
-  </v-card>
+        <tr class="bg-gray-50 hover:bg-gray-200">
+          <td class="key-column px-4 whitespace-nowrap text-sm text-gray-500 py-2">{{ t("sockets.creation-date") }}</td>
+          <td class="px-4 whitespace-nowrap text-sm text-gray-500 py-2">{{ creationDate }}</td>
+          <td class="px-4 whitespace-nowrap text-sm text-gray-500 py-2"></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
 </template>
 
 <script>
-import Transport from "../Transport";
-import ConnectionStatus from "../ConnectionStatus";
-import { mapState } from "vuex";
-import SocketHolder from "../../SocketHolder";
+import { computed } from "vue";
+import { useStore } from "vuex";
+import { useI18n } from "vue-i18n";
+import { useRouter } from "vue-router";
+import { LogoutIcon } from "@heroicons/vue/outline";
+import { DotsHorizontalIcon } from "@heroicons/vue/solid";
+
+import SocketHolder from "@/SocketHolder";
+import Tooltip from "@/components/Tooltip.vue";
+import Transport from "@/components/Transport.vue";
+import ConnectionStatus from "@/components/ConnectionStatus.vue";
 
 export default {
   name: "SocketDetails",
-
-  components: { ConnectionStatus, Transport },
-
+  components: { ConnectionStatus, Transport, Tooltip, DotsHorizontalIcon, LogoutIcon, },
   props: {
     socket: Object,
     client: Object,
   },
+  setup(props) {
+    const { t } = useI18n();
+    const store = useStore();
+    const router = useRouter();
 
-  computed: {
-    creationDate() {
-      return new Date(this.socket.handshake.issued).toISOString();
-    },
-    ...mapState({
-      isReadonly: (state) => state.config.readonly,
-      isSocketDisconnectSupported: (state) =>
-        state.config.supportedFeatures.includes("DISCONNECT"),
-    }),
-  },
+    const creationDate = computed(() => new Date(props.socket.handshake.issued).toISOString());
+    const isReadonly = computed(() => store.state.config.readonly);
+    const isSocketDisconnectSupported = computed(() => store.state.config.supportedFeatures.includes("DISCONNECT"));
 
-  methods: {
-    navigateToClient() {
-      this.$router.push({
+    const navigateToClient = () => router.push({
         name: "client",
         params: {
-          id: this.client.id,
+          id: props.client.id,
         },
       });
-    },
-    disconnectClient() {
-      SocketHolder.socket.emit(
+    const disconnectClient = () => SocketHolder.socket.emit(
         "_disconnect",
-        this.socket.nsp,
+        props.socket.nsp,
         true,
-        this.socket.id
+        props.socket.id
       );
-    },
-    disconnectSocket() {
-      SocketHolder.socket.emit(
+    const disconnectSocket = () => SocketHolder.socket.emit(
         "_disconnect",
-        this.socket.nsp,
+        props.socket.nsp,
         false,
-        this.socket.id
+        props.socket.id
       );
-    },
+
+    return { t, creationDate, isReadonly, isSocketDisconnectSupported, navigateToClient, disconnectClient, disconnectSocket, };
   },
 };
 </script>

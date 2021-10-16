@@ -1,91 +1,95 @@
 <template>
-  <v-app>
-    <AppBar @update="showConnectionModal = true" />
-
-    <NavigationDrawer />
-
-    <v-main :class="backgroundColor">
-      <v-container fluid>
-        <component :is="transitionName" hide-on-leave>
-          <router-view />
-        </component>
-      </v-container>
-    </v-main>
-
-    <ConnectionModal
-      :is-open="showConnectionModal"
-      :initial-server-url="serverUrl"
-      :initial-ws-only="wsOnly"
-      :initial-path="path"
-      :is-connecting="isConnecting"
-      :error="connectionError"
-      @submit="onSubmit"
-    />
-  </v-app>
+  <div class="flex h-screen bg-[#fafafa] dark:bg-[#121212] overflow-hidden">
+    <Sidebar />
+    <div class="flex flex-col flex-1 w-0 overflow-hidden">
+      <AppBar @update="showConnectionModal = true" />
+      <main class="flex-1 relative overflow-y-auto focus:outline-none">
+        <div class="py-6">
+          <router-view v-slot="{ Component, route }">
+            <transition :name="transitionName">
+              <component :is="Component" :key="route.path" />
+            </transition>
+          </router-view>
+        </div>
+      </main>
+      <ConnectionModal
+        :is-open="showConnectionModal"
+        :initial-server-url="serverUrl"
+        :initial-ws-only="wsOnly"
+        :initial-path="path"
+        :is-connecting="isConnecting"
+        :error="connectionError"
+        @submit="onSubmit"
+      />
+    </div>
+  </div>
 </template>
 
 <script>
-import AppBar from "./components/AppBar";
-import NavigationDrawer from "./components/NavigationDrawer";
+import { ref, computed, watch, onMounted } from "vue";
 import { io } from "socket.io-client";
-import ConnectionModal from "./components/ConnectionModal";
-import SocketHolder from "./SocketHolder";
-import { mapState } from "vuex";
-import {
-  VSlideXTransition,
-  VSlideXReverseTransition,
-  VSlideYTransition,
-  VSlideYReverseTransition,
-} from "vuetify/lib";
+import { useRoute } from "vue-router";
+import { useStore } from "vuex";
+
+import SocketHolder from "@/SocketHolder";
+import AppBar from "@/components/AppBar.vue";
+import Sidebar from "@/components/Sidebar.vue";
+import ConnectionModal from "@/components/ConnectionModal.vue";
 
 export default {
   name: "App",
-
   components: {
-    ConnectionModal,
-    NavigationDrawer,
     AppBar,
-    VSlideXTransition,
-    VSlideXReverseTransition,
-    VSlideYTransition,
-    VSlideYReverseTransition,
+    Sidebar,
+    ConnectionModal,
   },
+  setup() {
+    const store = useStore();
+    const route = useRoute();
+    const showConnectionModal = ref(false);
+    const isConnecting = ref(false);
+    const connectionError = ref("");
+    const transitionName = ref("moveRight");
 
-  data: () => ({
-    showConnectionModal: false,
-    isConnecting: false,
-    connectionError: "",
-    transitionName: "v-slide-x-reverse-transition",
-  }),
+    const serverUrl = computed(() => store.state.connection.serverUrl);
+    const wsOnly = computed(() => store.state.connection.wsOnly);
+    const path = computed(() => store.state.connection.path);
+    // const backgroundColor = computed(() => store.state.config.darkTheme ? "" : "grey lighten-5");
+    
+    // No need, cal in setup()
+  onMounted(() => {
+    // this.$vuetify.theme.dark = store.state.config.darkTheme;
 
-  computed: {
-    ...mapState({
-      serverUrl: (state) => state.connection.serverUrl,
-      wsOnly: (state) => state.connection.wsOnly,
-      path: (state) => state.connection.path,
-      backgroundColor: (state) =>
-        state.config.darkTheme ? "" : "grey lighten-5",
-    }),
-  },
+    if (serverUrl.value) {
+      const sessionId = store.state.connection.sessionId;
+      tryConnect(
+        serverUrl.value,
+        {
+          sessionId,
+        },
+        wsOnly.value,
+        path.value
+      );
+    } else {
+      showConnectionModal.value = true;
+    }
+  });
 
-  watch: {
-    $route(to, from) {
-      if (to.meta.topLevel && from.meta.topLevel) {
-        this.transitionName =
+  watch(() => route, (to, from) => {
+    if (to.meta.topLevel && from.meta.topLevel) {
+        transitionName.value =
           to.meta.index > from.meta.index
-            ? "v-slide-y-reverse-transition"
-            : "v-slide-y-transition";
+            ? "moveUp"
+            : "moveDown";
       } else {
-        this.transitionName = to.meta.topLevel
-          ? "v-slide-x-transition"
-          : "v-slide-x-reverse-transition";
+        transitionName.value = to.meta.topLevel
+          ? "moveLeft"
+          : "moveRight";
       }
-    },
-  },
+  }, { deep: true, },);
 
-  methods: {
-    tryConnect(serverUrl, auth, wsOnly, path) {
-      this.isConnecting = true;
+    const tryConnect = (serverUrl, auth, wsOnly, path) => {
+      isConnecting.value = true;
       if (SocketHolder.socket) {
         SocketHolder.socket.disconnect();
         SocketHolder.socket.off("connect");
@@ -101,70 +105,70 @@ export default {
         auth,
       });
       socket.once("connect", () => {
-        this.showConnectionModal = false;
-        this.connectionError = "";
-        this.isConnecting = false;
+        showConnectionModal.value = false;
+        connectionError.value = "";
+        isConnecting.value = false;
 
         socket.io.reconnection(true);
-        this.$store.commit("connection/saveConfig", {
+        store.commit("connection/saveConfig", {
           serverUrl,
           wsOnly,
           path,
         });
         SocketHolder.socket = socket;
-        this.registerEventListeners(socket);
+        registerEventListeners(socket);
       });
       socket.on("connect", () => {
-        this.$store.commit("connection/connect");
+        store.commit("connection/connect");
       });
       socket.on("connect_error", (err) => {
-        if (this.isConnecting || err.message === "invalid credentials") {
-          this.showConnectionModal = true;
-          this.connectionError = err.message;
-          this.isConnecting = false;
+        if (isConnecting.value || err.message === "invalid credentials") {
+          showConnectionModal.value = true;
+          connectionError.value = err.message;
+          isConnecting.value = false;
         }
       });
       socket.on("disconnect", () => {
-        this.$store.commit("connection/disconnect");
+        store.commit("connection/disconnect");
       });
-    },
+    };
 
-    registerEventListeners(socket) {
+    const registerEventListeners = (socket) => {
       socket.on("session", (sessionId) => {
-        this.$store.commit("connection/saveSessionId", sessionId);
+        store.commit("connection/saveSessionId", sessionId);
       });
       socket.on("config", (config) => {
-        this.$store.commit("config/updateConfig", config);
+        store.commit("config/updateConfig", config);
       });
       socket.on("server_stats", (serverStats) => {
-        this.$store.commit("servers/onServerStats", serverStats);
+        store.commit("servers/onServerStats", serverStats);
       });
       socket.on("all_sockets", (sockets) => {
-        this.$store.commit("main/onAllSockets", sockets);
+        store.commit("main/onAllSockets", sockets);
       });
       socket.on("socket_connected", (socket) => {
-        this.$store.commit("main/onSocketConnected", socket);
+        store.commit("main/onSocketConnected", socket);
       });
       socket.on("socket_updated", (socket) => {
-        this.$store.commit("main/onSocketUpdated", socket);
+        store.commit("main/onSocketUpdated", socket);
       });
       socket.on("socket_disconnected", (nsp, id, reason) => {
-        this.$store.commit("main/onSocketDisconnected", {
+        store.commit("main/onSocketDisconnected", {
           nsp,
           id,
           reason,
         });
       });
       socket.on("room_joined", (nsp, room, id) => {
-        this.$store.commit("main/onRoomJoined", { nsp, room, id });
+        store.commit("main/onRoomJoined", { nsp, room, id });
       });
       socket.on("room_left", (nsp, room, id) => {
-        this.$store.commit("main/onRoomLeft", { nsp, room, id });
+        store.commit("main/onRoomLeft", { nsp, room, id });
       });
-    },
+    };
 
-    onSubmit(form) {
-      this.tryConnect(
+    const onSubmit = (form) => {
+      tryConnect(
         form.serverUrl,
         {
           username: form.username,
@@ -173,25 +177,77 @@ export default {
         form.wsOnly,
         form.path
       );
-    },
-  },
+    };
 
-  created() {
-    this.$vuetify.theme.dark = this.$store.state.config.darkTheme;
-
-    if (this.serverUrl) {
-      const sessionId = this.$store.state.connection.sessionId;
-      this.tryConnect(
-        this.serverUrl,
-        {
-          sessionId,
-        },
-        this.wsOnly,
-        this.path
-      );
-    } else {
-      this.showConnectionModal = true;
-    }
+    return {
+      serverUrl,
+      wsOnly,
+      path,
+      onSubmit,
+      // backgroundColor,
+      showConnectionModal,
+      isConnecting,
+      connectionError,
+      transitionName,
+    };
   },
-};
+}
 </script>
+
+<style scoped>
+@keyframes fadeIn {
+  0% { opacity: 0; }
+  50% { opacity: .5; }
+  100% { opacity: 1; }
+}
+
+@keyframes fadeOut {
+  0% { opacity: 1; }
+  50% { opacity: .5; }
+  100% { opacity: 0; }
+}
+
+@keyframes moveUp {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(-20%); }
+}
+.moveUp-enter-active {
+  animation: fadeIn .5s ease-in;
+}
+.moveUp-leave-active {
+  animation: moveUp .3s ease-in;
+}
+
+@keyframes moveDown {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(20%); }
+}
+.moveDown-enter-active {
+  animation: fadeOut .5s ease-out;
+}
+.moveDown-leave-active {
+  animation: moveDown .3s ease-out;
+}
+
+@keyframes moveLeft {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-20%); }
+}
+.moveLeft-enter-active {
+  animation: fadeIn .5s ease-in;
+}
+.moveLeft-leave-active {
+  animation: moveLeft .3s ease-in;
+}
+
+@keyframes moveRight {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(20%); }
+}
+.moveRight-enter-active {
+  animation: fadeOut .5s ease-out;
+}
+.moveRight-leave-active {
+  animation: moveRight .3s ease-out;
+}
+</style>

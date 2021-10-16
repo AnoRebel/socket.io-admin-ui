@@ -1,11 +1,9 @@
 import { find, merge } from "lodash-es";
-import { pushUniq, remove } from "../../util";
+import { pushUniq, remove } from "@/util";
 
 const getOrCreateNamespace = (namespaces, name) => {
   let namespace = find(namespaces, { name });
-  if (namespace) {
-    return namespace;
-  }
+  if (namespace) return namespace;
   namespace = {
     name,
     sockets: [],
@@ -17,9 +15,7 @@ const getOrCreateNamespace = (namespaces, name) => {
 
 const getOrCreateRoom = (namespace, name) => {
   let room = find(namespace.rooms, { name });
-  if (room) {
-    return room;
-  }
+  if (room) return room;
   room = {
     name,
     active: true,
@@ -31,9 +27,7 @@ const getOrCreateRoom = (namespace, name) => {
 
 const getOrCreateClient = (clients, id) => {
   let client = find(clients, { id });
-  if (client) {
-    return client;
-  }
+  if (client) return client;
   client = {
     id,
     connected: true,
@@ -46,22 +40,16 @@ const getOrCreateClient = (clients, id) => {
 const addSocket = (state, socket) => {
   const namespace = getOrCreateNamespace(state.namespaces, socket.nsp);
   socket.connected = true;
-  if (!find(namespace.sockets, { id: socket.id })) {
-    namespace.sockets.push(socket);
-  }
+  if (!find(namespace.sockets, { id: socket.id })) namespace.sockets.push(socket);
 
   socket.rooms.forEach((name) => {
     const room = getOrCreateRoom(namespace, name);
     room.isPrivate = name === socket.id;
-    if (!find(room.sockets, { id: socket.id })) {
-      room.sockets.push(socket);
-    }
+    if (!find(room.sockets, { id: socket.id })) room.sockets.push(socket);
   });
 
   const client = getOrCreateClient(state.clients, socket.clientId);
-  if (!find(client.sockets, { id: socket.id })) {
-    client.sockets.push(socket);
-  }
+  if (!find(client.sockets, { id: socket.id })) client.sockets.push(socket);
 };
 
 export default {
@@ -72,46 +60,35 @@ export default {
     selectedNamespace: null,
   },
   getters: {
-    findSocketById: (state) => (nsp, id) => {
+    findSocketById: state => (nsp, id) => {
       const namespace = find(state.namespaces, { name: nsp });
-      if (namespace) {
-        return find(namespace.sockets, { id });
-      }
+      if (namespace) return find(namespace.sockets, { id });
     },
-    findClientById: (state) => (id) => {
-      return find(state.clients, { id });
-    },
-    findRoomByName: (state) => (nsp, name) => {
+    findClientById: state => (id) => find(state.clients, { id }),
+    findRoomByName: state => (nsp, name) => {
       const namespace = find(state.namespaces, { name: nsp });
-      if (namespace) {
-        return find(namespace.rooms, { name });
-      }
+      if (namespace) return find(namespace.rooms, { name });
     },
-    findRoomsByNamespace: (state) => (nsp) => {
+    findRoomsByNamespace: state => (nsp) => {
       const namespace = find(state.namespaces, { name: nsp });
       return namespace ? namespace.rooms : [];
     },
-    sockets: (state) => {
-      return state.selectedNamespace ? state.selectedNamespace.sockets : [];
-    },
-    rooms: (state) => {
-      return state.selectedNamespace ? state.selectedNamespace.rooms : [];
-    },
+    sockets: state => state.selectedNamespace ? state.selectedNamespace.sockets : [],
+    rooms: state => state.selectedNamespace ? state.selectedNamespace.rooms : [],
   },
   mutations: {
     selectNamespace(state, namespace) {
       state.selectedNamespace = namespace;
     },
     onAllSockets(state, sockets) {
-      state.namespaces.forEach((namespace) => {
+      state.namespaces.forEach(namespace => {
         namespace.sockets.splice(0);
         namespace.rooms.splice(0);
       });
       state.clients.splice(0);
-      sockets.forEach((socket) => addSocket(state, socket));
+      sockets.forEach(socket => addSocket(state, socket));
       if (!state.selectedNamespace) {
-        state.selectedNamespace =
-          find(state.namespaces, { name: "/" }) || state.namespaces[0];
+        state.selectedNamespace = find(state.namespaces, { name: "/" }) || state.namespaces[0];
       }
     },
     onSocketConnected(state, socket) {
@@ -120,9 +97,7 @@ export default {
     onSocketUpdated(state, socket) {
       const namespace = getOrCreateNamespace(state.namespaces, socket.nsp);
       const existingSocket = find(namespace.sockets, { id: socket.id });
-      if (existingSocket) {
-        merge(existingSocket, socket);
-      }
+      if (existingSocket) merge(existingSocket, socket);
     },
     onSocketDisconnected(state, { nsp, id }) {
       const namespace = getOrCreateNamespace(state.namespaces, nsp);
@@ -150,9 +125,7 @@ export default {
     onRoomLeft(state, { nsp, room, id }) {
       const namespace = getOrCreateNamespace(state.namespaces, nsp);
       const socket = find(namespace.sockets, { id });
-      if (socket) {
-        remove(socket.rooms, room);
-      }
+      if (socket) remove(socket.rooms, room);
       const _room = getOrCreateRoom(namespace, room);
       remove(_room.sockets, { id });
       if (_room.sockets.length === 0) {

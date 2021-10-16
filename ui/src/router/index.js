@@ -1,15 +1,6 @@
-import Vue from "vue";
-import VueRouter from "vue-router";
-import Dashboard from "../views/Dashboard";
-import Sockets from "../views/Sockets";
-import Socket from "../views/Socket";
-import Rooms from "../views/Rooms";
-import Clients from "../views/Clients";
-import Client from "../views/Client";
-import Servers from "../views/Servers";
-import Room from "../views/Room";
+import { createRouter, createWebHistory } from "vue-router";
 
-Vue.use(VueRouter);
+import Dashboard from "@/views/Dashboard.vue";
 
 const routes = [
   {
@@ -24,7 +15,7 @@ const routes = [
   {
     path: "/sockets/",
     name: "sockets",
-    component: Sockets,
+    component: () => import("@/views/Sockets.vue"),
     meta: {
       topLevel: true,
       index: 1,
@@ -33,7 +24,7 @@ const routes = [
   {
     path: "/n/:nsp/sockets/:id",
     name: "socket",
-    component: Socket,
+    component: () => import("@/views/Socket.vue"),
     meta: {
       topLevel: false,
     },
@@ -41,7 +32,7 @@ const routes = [
   {
     path: "/rooms/",
     name: "rooms",
-    component: Rooms,
+    component: () => import("@/views/Rooms.vue"),
     meta: {
       topLevel: true,
       index: 2,
@@ -50,7 +41,7 @@ const routes = [
   {
     path: "/n/:nsp/rooms/:name",
     name: "room",
-    component: Room,
+    component: () => import("@/views/Room.vue"),
     meta: {
       topLevel: false,
     },
@@ -58,7 +49,7 @@ const routes = [
   {
     path: "/clients/",
     name: "clients",
-    component: Clients,
+    component: () => import("@/views/Clients.vue"),
     meta: {
       topLevel: true,
       index: 3,
@@ -67,7 +58,7 @@ const routes = [
   {
     path: "/clients/:id",
     name: "client",
-    component: Client,
+    component: () => import("@/views/Client.vue"),
     meta: {
       topLevel: false,
     },
@@ -75,17 +66,17 @@ const routes = [
   {
     path: "/servers/",
     name: "servers",
-    component: Servers,
+    component: () => import("@/views/Servers.vue"),
     meta: {
       topLevel: true,
       index: 4,
     },
   },
+  { path: "/:pathMatch(.*)*", name: "NotFound", component: () => import("@/views/NotFound.vue"), },
 ];
 
-const router = new VueRouter({
-  mode: "hash",
-  base: process.env.BASE_URL,
+const router = createRouter({
+  history: createWebHistory(import.meta.env.BASE_URL || process.env.BASE_URL),
   routes,
 });
 

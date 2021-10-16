@@ -1,69 +1,75 @@
 <template>
-  <v-card>
-    <v-card-title>{{ $t("sockets.title") }}</v-card-title>
-
-    <v-data-table :headers="headers" :items="sockets" dense>
-      <template v-slot:item.nsp="{ value }">
-        <code>{{ value }}</code>
+  <div class="p-4 bg-white shadow-lg rounded-lg my-20 mx-6">
+    <div class="font-bold text-left p-4">{{ t("sockets.title") }}</div>
+      <Datatable :headers="headers" :items="sockets" :dense="true">
+        <template #nsp="{ item }">
+        <code>{{ item.nsp }}</code>
       </template>
 
-      <template v-slot:item.actions="{ item }">
-        <v-tooltip bottom v-if="isSocketDisconnectSupported">
-          <template v-slot:activator="{ on, attrs }">
-            <v-btn
-              v-bind="attrs"
-              v-on="on"
-              @click="disconnect(item)"
+      <template #actions="{ item }">
+        <tooltip v-if="isSocketDisconnectSupported">
+          <template #activator>
+            <button class="btn ml-3"
               :disabled="isReadonly"
-              small
-              class="ml-3"
+              @click="disconnect(item)"
             >
-              <v-icon>mdi-logout</v-icon>
-            </v-btn>
+              <LogoutIcon />
+            </button>
           </template>
-          <span>{{ $t("sockets.disconnect") }}</span>
-        </v-tooltip>
+          <span>{{ t("sockets.disconnect") }}</span>
+        </tooltip>
 
-        <v-tooltip bottom>
-          <template v-slot:activator="{ on, attrs }">
-            <v-btn
-              v-bind="attrs"
-              v-on="on"
+        <tooltip>
+          <template #activator>
+            <button class="btn ml-3"
               @click="displayDetails(item)"
-              small
-              class="ml-3"
             >
-              <v-icon>mdi-dots-horizontal</v-icon>
-            </v-btn>
+              <DotsHorizontalIcon />
+            </button>
           </template>
-          <span>{{ $t("sockets.displayDetails") }}</span>
-        </v-tooltip>
+          <span>{{ t("sockets.displayDetails") }}</span>
+        </tooltip>
       </template>
-    </v-data-table>
-  </v-card>
+      </Datatable>
+  </div>
 </template>
 
 <script>
-import { mapState } from "vuex";
-import SocketHolder from "../../SocketHolder";
+import { computed } from "vue";
+import { useStore } from "vuex";
+import { useI18n } from "vue-i18n";
+import { useRouter } from "vue-router";
+import { LogoutIcon } from "@heroicons/vue/outline";
+import { DotsHorizontalIcon } from "@heroicons/vue/solid";
+
+import SocketHolder from "@/SocketHolder";
+import Tooltip from "@/components/Tooltip.vue";
+import Datatable from "@/components/Datatable.vue";
 
 export default {
   name: "ClientSockets",
-
+  components: {
+    Tooltip,
+    Datatable,
+    LogoutIcon,
+    DotsHorizontalIcon,
+  },
   props: {
     sockets: Array,
   },
+  setup() {
+    const { t } = useI18n();
+    const store = useStore();
+    const router = useRouter();
 
-  computed: {
-    headers() {
-      return [
+    const headers = computed(() => [
         {
           text: "#",
           value: "id",
           align: "start",
         },
         {
-          text: this.$t("namespace"),
+          text: t("namespace"),
           value: "nsp",
         },
         {
@@ -71,25 +77,22 @@ export default {
           align: "end",
           sortable: false,
         },
-      ];
-    },
-    ...mapState({
-      isReadonly: (state) => state.config.readonly,
-      isSocketDisconnectSupported: (state) =>
-        state.config.supportedFeatures.includes("DISCONNECT"),
-    }),
-  },
+      ]);
 
-  methods: {
-    disconnect(socket) {
+      const isReadonly = computed(() => store.state.config.readonly);
+      const isSocketDisconnectSupported = computed(() => store.state.config.supportedFeatures.includes("DISCONNECT"));
+
+      const disconnect = (socket) => {
       SocketHolder.socket.emit("_disconnect", socket.nsp, false, socket.id);
-    },
-    displayDetails(socket) {
-      this.$router.push({
+    };
+    const displayDetails = (socket) => {
+      router.push({
         name: "socket",
         params: { nsp: socket.nsp, id: socket.id },
       });
-    },
+    };
+
+    return { t, headers, isReadonly, isSocketDisconnectSupported, disconnect, displayDetails, }
   },
 };
 </script>

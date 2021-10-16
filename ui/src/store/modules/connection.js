@@ -1,4 +1,4 @@
-import { isLocalStorageAvailable } from "../../util";
+import { isLocalStorageAvailable } from "@/util";
 
 export default {
   namespaced: true,

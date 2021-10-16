@@ -1,28 +1,49 @@
 <template>
-  <v-chip small :color="color" outlined class="text-uppercase">{{
-    label
-  }}</v-chip>
+  <div
+    class="
+      rounded-full
+      border-1
+      px-3
+      mx-1.5
+      text-sm
+      uppercase
+      cursor-default
+      hover:(bg-gray-400/10)
+    "
+    :class="color"
+  >
+    {{ label }}
+  </div>
 </template>
 
 <script>
-import colors from "vuetify/lib/util/colors";
+import { computed } from "vue";
 
 export default {
   name: "Status",
-
   props: {
-    value: Boolean,
-    koLabel: String,
-    okLabel: String,
+    value: {
+      type: Boolean,
+      required: true,
+    },
+    koLabel: {
+      type: String,
+      required: true,
+    },
+    okLabel: {
+      type: String,
+      required: true,
+    },
   },
+  setup(props) {
+    const label = computed(() => 
+      props.value ? props.okLabel : props.koLabel
+    );
+    const color = computed(() => 
+      props.value ? `border-green-500 text-green-500` : `border-red-500 text-red-500`
+    );
 
-  computed: {
-    label() {
-      return this.value ? this.okLabel : this.koLabel;
-    },
-    color() {
-      return this.value ? colors.green.base : colors.red.base;
-    },
+    return { label, color };
   },
 };
 </script>

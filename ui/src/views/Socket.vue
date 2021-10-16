@@ -1,67 +1,74 @@
 <template>
-  <div>
-    <v-breadcrumbs :items="breadcrumbItems" />
-
-    <v-container v-if="socket" fluid>
-      <v-row>
-        <v-col sm="12" md="6" lg="4">
-          <SocketDetails :socket="socket" :client="client" />
-        </v-col>
-
-        <v-col sm="12" md="6" lg="4">
-          <InitialRequest :socket="socket" />
-        </v-col>
-
-        <v-col sm="12" md="6" lg="4">
-          <SocketRooms :socket="socket" />
-        </v-col>
-      </v-row>
-    </v-container>
+  <div class="mx-auto max-w-7xl px-4 sm:px-6 md:px-8">
+    <breadcrumbs :items="breadcrumbItems" />
+  </div>
+  <div class="mx-auto max-w-7xl px-4 sm:px-6 md:px-8">
+    <!-- Replace with your content -->
+    <div v-if="socket" class="flex flex-row">
+      <div class="w-full md:w-1/6 lg:w-1/4">
+        <SocketDetails :socket="socket" :client="client" />
+      </div>
+      <div class="w-full md:w-1/6 lg:w-1/4">
+        <InitialRequest :socket="socket" />
+      </div>
+      <div class="w-full md:w-1/6 lg:w-1/4">
+        <SocketRooms :socket="socket" />
+      </div>
+    </div>
+    <!-- /End replace -->
   </div>
 </template>
 
 <script>
-import { mapGetters } from "vuex";
-import SocketRooms from "../components/Socket/SocketRooms";
-import SocketDetails from "../components/Socket/SocketDetails";
-import InitialRequest from "../components/Socket/InitialRequest";
+import { ref, computed, onMounted } from "vue";
+import { useStore } from "vuex";
+import { useI18n } from "vue-i18n";
+import { useRoute } from "vue-router";
+
+import Breadcrumbs from "@/components/Breadcrumbs.vue";
+import SocketRooms from "@/components/Socket/SocketRooms.vue";
+import SocketDetails from "@/components/Socket/SocketDetails.vue";
+import InitialRequest from "@/components/Socket/InitialRequest.vue";
 
 export default {
   name: "Socket",
+  components: { InitialRequest, SocketDetails, SocketRooms, Breadcrumbs, },
+  setup() {
+    const { t } = useI18n();
+    const store = useStore();
+    const route = useRoute();
 
-  components: { InitialRequest, SocketDetails, SocketRooms },
+    const socket = ref(null);
+    const client = ref(null);
 
-  data() {
-    return {
-      socket: null,
-      client: null,
-    };
-  },
+    onMounted(() => {
+      const findSocketById = computed(() => store.getters["main/findSocketById"](
+        route.params.nsp,
+        route.params.id
+      ));
+      const findClientById = computed(() => store.getters["main/findClientById"](socket.value.clientId));
+      socket.value = findSocketById.value;
+      if (socket.value) {
+        client.value = findClientById.value;
+      }
+    });
 
-  computed: {
-    breadcrumbItems() {
-      return [
+    const breadcrumbItems = computed(() => [
         {
-          text: this.$t("sockets.title"),
+          text: t("sockets.title"),
           to: { name: "sockets" },
         },
         {
-          text: this.$t("sockets.details"),
+          text: t("sockets.details"),
           disabled: true,
         },
-      ];
-    },
-    ...mapGetters("main", ["findSocketById", "findClientById"]),
-  },
+      ]);
 
-  mounted() {
-    this.socket = this.findSocketById(
-      this.$route.params.nsp,
-      this.$route.params.id
-    );
-    if (this.socket) {
-      this.client = this.findClientById(this.socket.clientId);
-    }
+    return {
+      socket,
+      client,
+      breadcrumbItems,
+    };
   },
 };
 </script>

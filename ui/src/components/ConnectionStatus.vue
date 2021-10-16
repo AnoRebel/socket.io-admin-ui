@@ -1,21 +1,29 @@
 <template>
   <Status
     :value="connected"
-    :ok-label="$t('connected')"
-    :ko-label="$t('disconnected')"
+    :ok-label="t('connected')"
+    :ko-label="t('disconnected')"
   />
 </template>
 
 <script>
-import Status from "./Status";
+import { useI18n } from "vue-i18n";
+
+import Status from "@/components/Status.vue";
 
 export default {
   name: "ConnectionStatus",
-
-  components: { Status },
-
+  components: { Status, },
   props: {
-    connected: Boolean,
+    connected: {
+      type:Boolean, 
+      required: true,
+    },
+  },
+  setup() {
+    const { t } = useI18n();
+
+    return { t };
   },
 };
 </script>

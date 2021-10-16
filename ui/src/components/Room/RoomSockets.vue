@@ -1,115 +1,103 @@
 <template>
-  <v-card v-if="room">
-    <v-card-title>{{ $t("sockets.title") }}</v-card-title>
-
-    <v-data-table
-      :headers="headers"
-      :items="room.sockets"
-      :footer-props="footerProps"
-    >
-      <template v-slot:item.transport="{ value }">
-        <Transport :transport="value" />
+  <div v-if="room" class="p-4 bg-white shadow-lg rounded-lg my-20 mx-6">
+    <div class="font-bold text-left p-4">{{ t("sockets.title") }}</div>
+    <Datatable :headers="headers" :items="room.sockets">
+      <template #transport="{ item }">
+        <Transport :transport="item.transport" />
       </template>
-      <template v-slot:item.actions="{ item }">
-        <v-tooltip bottom v-if="isSocketLeaveSupported && !room.isPrivate">
-          <template v-slot:activator="{ on, attrs }">
-            <v-btn
-              v-bind="attrs"
-              v-on="on"
+      <template #actions="{ item }">
+        <tooltip v-if="isSocketLeaveSupported && !room.isPrivate">
+          <template #activator>
+            <button
+              class="btn ml-3"
+              :disabled="isReadonly"
               @click="leave(item)"
-              :disabled="isReadonly"
-              small
-              class="ml-3"
             >
-              <v-icon>mdi-tag-off-outline</v-icon>
-            </v-btn>
+              <MinusCircleIcon />
+            </button>
           </template>
-          <span>{{ $t("rooms.leave") }}</span>
-        </v-tooltip>
+          <span>{{ t("rooms.leave") }}</span>
+        </tooltip>
 
-        <v-tooltip bottom v-if="isSocketDisconnectSupported">
-          <template v-slot:activator="{ on, attrs }">
-            <v-btn
-              v-bind="attrs"
-              v-on="on"
+        <tooltip v-if="isSocketDisconnectSupported">
+          <template #activator>
+            <button
+              class="btn ml-3"
+              :disabled="isReadonly"
               @click="disconnect(item)"
-              :disabled="isReadonly"
-              small
-              class="ml-3"
             >
-              <v-icon>mdi-logout</v-icon>
-            </v-btn>
+              <LogoutIcon />
+            </button>
           </template>
-          <span>{{ $t("sockets.disconnect") }}</span>
-        </v-tooltip>
+          <span>{{ t("sockets.disconnect") }}</span>
+        </tooltip>
 
-        <v-tooltip bottom>
-          <template v-slot:activator="{ on, attrs }">
-            <v-btn
-              v-bind="attrs"
-              v-on="on"
+        <tooltip>
+          <template #activator>
+            <button
+              class="btn ml-3"
               @click="displayDetails(item)"
-              small
-              class="ml-3"
             >
-              <v-icon>mdi-dots-horizontal</v-icon>
-            </v-btn>
+              <DotsHorizontalIcon />
+            </button>
           </template>
-          <span>{{ $t("sockets.displayDetails") }}</span>
-        </v-tooltip>
+          <span>{{ t("sockets.displayDetails") }}</span>
+        </tooltip>
       </template>
-    </v-data-table>
-  </v-card>
+    </Datatable>
+  </div>
 </template>
 
 <script>
-import Transport from "../Transport";
-import { mapGetters, mapState } from "vuex";
-import SocketHolder from "../../SocketHolder";
+import { ref, computed } from "vue";
+import { useStore } from "vuex";
+import { useI18n } from "vue-i18n";
+import { useRouter, useRoute } from "vue-router";
+import { DotsHorizontalIcon } from "@heroicons/vue/solid";
+import { LogoutIcon, MinusCircleIcon } from "@heroicons/vue/outline";
+
+import SocketHolder from "@/SocketHolder";
+import Tooltip from "@/components/Tooltip.vue";
+import Datatable from "@/components/Datatable.vue";
+import Transport from "@/components/Transport.vue";
 
 export default {
   name: "RoomSockets",
-
-  components: { Transport },
-
+  components: { Transport, Datatable, Tooltip, LogoutIcon, MinusCircleIcon, DotsHorizontalIcon, },
   props: {
     room: Object,
   },
-
-  data() {
-    return {
-      footerProps: {
+  setup(props) {
+    const { t } = useI18n();
+    const store = useStore();
+    const route = useRoute();
+    const router = useRouter();
+    const footerProps = ref({
         "items-per-page-options": [20, 100, -1],
-      },
-    };
-  },
+      });
 
-  computed: {
-    breadcrumbItems() {
-      return [
+    const breadcrumbItems = computed(() => [
         {
-          text: this.$t("rooms.title"),
+          text: t("rooms.title"),
           to: { name: "rooms" },
         },
         {
-          text: this.$t("rooms.details"),
+          text: t("rooms.details"),
           disabled: true,
         },
-      ];
-    },
-    headers() {
-      return [
+      ]);
+    const headers = computed(() => [
         {
-          text: this.$t("id"),
+          text: t("id"),
           value: "id",
           align: "start",
         },
         {
-          text: this.$t("sockets.address"),
+          text: t("sockets.address"),
           value: "handshake.address",
         },
         {
-          text: this.$t("sockets.transport"),
+          text: t("sockets.transport"),
           value: "transport",
         },
         {
@@ -117,31 +105,21 @@ export default {
           align: "end",
           sortable: false,
         },
-      ];
-    },
-    ...mapGetters("main", ["findRoomByName"]),
-    ...mapState({
-      isReadonly: (state) => state.config.readonly,
-      isSocketLeaveSupported: (state) =>
-        state.config.supportedFeatures.includes("LEAVE"),
-      isSocketDisconnectSupported: (state) =>
-        state.config.supportedFeatures.includes("DISCONNECT"),
-    }),
-  },
+      ]);
+    // const findRoomByName = (room) => store.getters["main/findRoomByName"](room);
+    const findRoomByName = computed(() => store.getters["main/findRoomByName"]);
+    const isReadonly = computed(() => store.state.config.readonly);
+    const isSocketLeaveSupported = computed(() => store.state.config.supportedFeatures.includes("LEAVE"))
+    const isSocketDisconnectSupported = computed(() => store.state.config.supportedFeatures.includes("DISCONNECT"))
 
-  methods: {
-    leave(socket) {
-      SocketHolder.socket.emit("leave", socket.nsp, this.room.name, socket.id);
-    },
-    disconnect(socket) {
-      SocketHolder.socket.emit("_disconnect", socket.nsp, false, socket.id);
-    },
-    displayDetails(socket) {
-      this.$router.push({
+    const leave = socket => SocketHolder.socket.emit("leave", socket.nsp, props.room.name, socket.id);
+    const disconnect = socket => SocketHolder.socket.emit("_disconnect", socket.nsp, false, socket.id);
+    const displayDetails = socket => router.push({
         name: "socket",
-        params: { nsp: this.$route.params.nsp, id: socket.id },
+        params: { nsp: route.params.nsp, id: socket.id },
       });
-    },
+
+    return { t, footerProps, breadcrumbItems, headers, findRoomByName, isReadonly, isSocketLeaveSupported, isSocketDisconnectSupported, leave, disconnect, displayDetails, };
   },
 };
 </script>

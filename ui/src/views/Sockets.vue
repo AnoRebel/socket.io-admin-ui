@@ -1,96 +1,81 @@
 <template>
-  <div>
-    <v-breadcrumbs :items="breadcrumbItems" />
-
-    <v-card>
-      <v-card-text>
-        <NamespaceSelector />
-      </v-card-text>
-
-      <v-data-table
-        :headers="headers"
-        :items="sockets"
-        :footer-props="footerProps"
-      >
-        <template v-slot:item.transport="{ value }">
-          <Transport :transport="value" />
+  <div class="mx-auto max-w-7xl px-4 sm:px-6 md:px-8">
+    <breadcrumbs :items="breadcrumbItems" />
+  </div>
+  <div class="p-4 bg-white shadow-lg rounded-lg my-20 mx-6">
+    <div class="p-4">
+      <NamespaceSelector />
+    </div>
+    <Datatable :headers="headers" :items="sockets">
+      <template #transport="{ item }">
+          <Transport :transport="item.transport" />
         </template>
-        <template v-slot:item.actions="{ item }">
-          <v-tooltip bottom v-if="isSocketDisconnectSupported">
-            <template v-slot:activator="{ on, attrs }">
-              <v-btn
-                v-bind="attrs"
-                v-on="on"
-                @click="disconnect(item)"
+        <template #actions="{ item }">
+          <tooltip v-if="isSocketDisconnectSupported">
+            <template #activator>
+              <button class="btn ml-3"
                 :disabled="isReadonly"
-                small
-                class="ml-3"
+                @click="disconnect(item)"
               >
-                <v-icon>mdi-logout</v-icon>
-              </v-btn>
+                <LogoutIcon />
+              </button>
             </template>
-            <span>{{ $t("sockets.disconnect") }}</span>
-          </v-tooltip>
+            <span>{{ t("sockets.disconnect") }}</span>
+          </tooltip>
 
-          <v-tooltip bottom>
-            <template v-slot:activator="{ on, attrs }">
-              <v-btn
-                v-bind="attrs"
-                v-on="on"
+          <tooltip>
+            <template #activator>
+              <button class="btn ml-3"
                 @click="displayDetails(item)"
-                small
-                class="ml-3"
               >
-                <v-icon>mdi-dots-horizontal</v-icon>
-              </v-btn>
+                <DotsHorizontalIcon />
+              </button>
             </template>
-            <span>{{ $t("sockets.displayDetails") }}</span>
-          </v-tooltip>
+            <span>{{ t("sockets.displayDetails") }}</span>
+          </tooltip>
         </template>
-      </v-data-table>
-    </v-card>
+    </Datatable>
   </div>
 </template>
 
 <script>
-import { mapGetters, mapState } from "vuex";
-import NamespaceSelector from "../components/NamespaceSelector";
-import SocketHolder from "../SocketHolder";
-import Transport from "../components/Transport";
+import { ref, computed } from "vue";
+import { useStore } from "vuex";
+import { useI18n } from "vue-i18n";
+import { useRouter } from "vue-router";
+import { LogoutIcon } from "@heroicons/vue/outline";
+import { DotsHorizontalIcon } from "@heroicons/vue/solid";
+
+import SocketHolder from "@/SocketHolder";
+import Tooltip from "@/components/Tooltip.vue";
+import Datatable from "@/components/Datatable.vue";
+import Transport from "@/components/Transport.vue";
+import Breadcrumbs from "@/components/Breadcrumbs.vue";
+import NamespaceSelector from "@/components/NamespaceSelector.vue";
 
 export default {
   name: "Sockets",
-  components: { Transport, NamespaceSelector },
-  data() {
-    return {
-      footerProps: {
+  components: { Transport, NamespaceSelector, Breadcrumbs, Datatable, Tooltip, LogoutIcon, DotsHorizontalIcon },
+  setup() {
+    const { t } = useI18n();
+    const store = useStore();
+    const router = useRouter();
+    const footerProps = ref({
         "items-per-page-options": [20, 100, -1],
-      },
-    };
-  },
+      });
 
-  computed: {
-    breadcrumbItems() {
-      return [
-        {
-          text: this.$t("sockets.title"),
-          disabled: true,
-        },
-      ];
-    },
-    headers() {
-      return [
+    const headers = computed(() => [
         {
           text: "#",
           value: "id",
           align: "start",
         },
         {
-          text: this.$t("sockets.address"),
+          text: t("sockets.address"),
           value: "handshake.address",
         },
         {
-          text: this.$t("sockets.transport"),
+          text: t("sockets.transport"),
           value: "transport",
         },
         {
@@ -98,27 +83,40 @@ export default {
           align: "end",
           sortable: false,
         },
-      ];
-    },
-    ...mapGetters("main", ["sockets"]),
-    ...mapState({
-      selectedNamespace: (state) => state.main.selectedNamespace,
-      isReadonly: (state) => state.config.readonly,
-      isSocketDisconnectSupported: (state) =>
-        state.config.supportedFeatures.includes("DISCONNECT"),
-    }),
-  },
+      ]);
+    const breadcrumbItems = computed(() => [
+        {
+          text: t("sockets.title"),
+          disabled: true,
+        },
+      ]);
+    const sockets = computed(() => store.getters["main/sockets"]);
+    const selectedNamespace = (() => store.state.main.selectedNamespace);
+    const isReadonly = computed(() => store.state.config.readonly);
+    const isSocketDisconnectSupported = computed(() => store.state.config.supportedFeatures.includes("DISCONNECT"));
 
-  methods: {
-    disconnect(socket) {
+    const disconnect = (socket) => {
       SocketHolder.socket.emit("_disconnect", socket.nsp, false, socket.id);
-    },
-    displayDetails(socket) {
-      this.$router.push({
+    };
+    const displayDetails = (socket) => {
+      router.push({
         name: "socket",
-        params: { nsp: this.selectedNamespace.name, id: socket.id },
+        params: { nsp: selectedNamespace.value.name, id: socket.id },
       });
-    },
+    };
+
+    return {
+      t,
+      footerProps,
+      breadcrumbItems,
+      headers,
+      sockets,
+      selectedNamespace,
+      isReadonly,
+      isSocketDisconnectSupported,
+      disconnect,
+      displayDetails,
+    };
   },
 };
 </script>
